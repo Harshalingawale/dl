@@ -1,0 +1,147 @@
+"""Design and implement Parallel Breadth First Search and Depth First Search based on existing
+algorithms using OpenMP. Use a Tree or an undirected graph for BFS and DFS"""
+
+
+
+!/usr/local/cuda/bin/nvcc --version
+
+
+
+
+
+!nvcc --version
+
+
+
+
+!pip install git+https://github.com/andreinechaev/nvcc4jupyter.git
+
+
+
+
+# Commented out IPython magic to ensure Python compatibility.
+%load_ext nvcc_plugin
+
+
+
+
+# Commented out IPython magic to ensure Python compatibility.
+%%cu
+
+#include <iostream>
+#include <queue>
+#include <omp.h>
+#include <vector>
+#include <stack>
+
+void parallelBFS(int startNode, int numThreads, const std::vector<std::vector<int>>& graph) 
+{
+    int numNodes = graph.size();
+    std::vector<bool> visited(numNodes, false);
+    std::queue<int> q;
+    
+    visited[startNode] = true;
+    q.push(startNode);
+    
+    while (!q.empty()) 
+    {
+        #pragma omp parallel num_threads(numThreads)
+        {
+            #pragma omp for
+            for (int i = 0; i < q.size(); i++) {
+                int currentNode;
+                #pragma omp critical
+                {
+                    currentNode = q.front();
+                    q.pop();
+                }
+                
+                // Process current node
+                std::cout << "Visited: " << currentNode << std::endl;
+                
+                // Explore neighbors in parallel
+                #pragma omp for
+                for (int j = 0; j < graph[currentNode].size(); j++) {
+                    int neighbor = graph[currentNode][j];
+                    
+                    // Visit unvisited neighbors
+                    #pragma omp critical
+                    {
+                        if (!visited[neighbor]) 
+                        {
+                            visited[neighbor] = true;
+                            q.push(neighbor);
+                        }
+                    }
+                        }
+                    }
+                }
+            }
+}
+
+
+void parallelDFS(int startNode, int numThreads, const std::vector<std::vector<int>>& graph) {
+    int numNodes = graph.size();
+    std::vector<bool> visited(numNodes, false);
+    std::stack<int> st;
+    
+    #pragma omp parallel num_threads(numThreads)
+    {
+        #pragma omp single
+        {
+            visited[startNode] = true;
+            st.push(startNode);
+        }
+        while (!st.empty()) 
+        {
+            int currentNode;
+            #pragma omp critical
+            {
+                currentNode = st.top();
+                st.pop();
+            }
+            // Process current node
+            std::cout << "Visited: " << currentNode << std::endl;
+            
+            // Explore neighbors in parallel
+            #pragma omp for
+            for (int i = 0; i < graph[currentNode].size(); i++) {
+                int neighbor = graph[currentNode][i];
+                
+                // Visit unvisited neighbors
+                #pragma omp critical
+                {
+                    if (!visited[neighbor]) 
+                    {
+                        visited[neighbor] = true;
+                        st.push(neighbor);
+                    }
+                }
+            }
+        }
+    }
+}
+int main() 
+{
+    // Example graph representation (adjacency list)
+    std::vector<std::vector<int>> graph = {
+        {1, 2},
+        {0, 3, 4},
+        {0, 5, 6},
+        {1},
+        {1},
+        {2},
+        {2}
+    };
+
+    int startNode = 0;
+    int numThreads = 4;
+
+    std::cout << "Parallel BFS:" << std::endl;
+    parallelBFS(startNode, numThreads, graph);
+
+    std::cout << "\nParallel DFS:" << std::endl;
+    parallelDFS(startNode, numThreads, graph);
+
+    return 0;
+}

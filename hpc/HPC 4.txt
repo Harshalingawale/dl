@@ -1,0 +1,307 @@
+a)
+!nvcc --version
+
+
+
+#Run the given command to install a small extension to run nvcc from the Notebook cells.
+!pip install git+https://github.com/andreinechaev/nvcc4jupyter.git
+
+
+
+
+# Commented out IPython magic to ensure Python compatibility.
+#Load the extension
+%load_ext nvcc_plugin
+
+
+
+
+
+#Commented out IPython magic to ensure Python compatibility.
+%%cu
+#include<stdio.h>
+#include<cuda.h>
+#include<stdlib.h>
+#include<time.h>
+#define N 500
+ 
+ __global__ void add(int *a, int *b, int *c){
+ 
+ int tid = threadIdx.x;
+ if (tid < N){
+ 	c[tid]= a[tid] + b[tid];
+ 	}
+ 
+ }
+ 
+  int main (void){
+ int a[N], b[N], c[N];
+ int *dev_a, *dev_b,*dev_c;
+ cudaError_t err=cudaSuccess;
+ err=cudaMalloc((void**)&dev_a,N * sizeof(int)); 
+ if (err !=cudaSuccess)
+ { 	printf("failed to  allocate on device \n");
+ 	printf("error is:\n",cudaGetErrorString(err));
+ exit(EXIT_FAILURE);
+ }
+ cudaMalloc((void**)&dev_b,N * sizeof(int)); 
+ cudaMalloc((void**)&dev_c,N * sizeof(int)); 
+ 
+ for(int i=0;i<N;i++){
+ a[i] =i;
+ b[i] = i*i;
+ 
+ c[i]=0;
+ }
+ 
+ /*for(int i=0;i<N;i++){
+ printf(" c conttents are =%d\n",  c[i]);
+ } */
+ cudaEvent_t start, end;
+ cudaEventCreate(&start);
+ cudaEventCreate(&end);
+ cudaEventRecord(start);
+ 
+ cudaMemcpy(dev_a,a,N*sizeof(int), cudaMemcpyHostToDevice);
+ cudaMemcpy(dev_b,b,N*sizeof(int), cudaMemcpyHostToDevice);
+ cudaMemcpy(dev_c,c,N*sizeof(int), cudaMemcpyHostToDevice);
+ add<<<1,N>>>(dev_a,dev_b,dev_c);
+ 
+ err=cudaMemcpy(c,dev_c,N*sizeof(int), cudaMemcpyDeviceToHost);
+ if (err !=cudaSuccess)
+ { 	printf("failed to  copy from device \n");
+ exit(EXIT_FAILURE);
+ }
+ 
+ cudaEventRecord(end);
+ cudaEventSynchronize(end);
+ float time = 0;
+ cudaEventElapsedTime(&time, start, end);
+ printf("execution time=%f\n",time);
+ 
+ for(int i=0;i<N;i++){
+ printf("%d +%d=%d\n", a[i], b[i], c[i]);
+ }
+ 
+ cudaFree(dev_a);
+ cudaFree(dev_b);
+ cudaFree(dev_c);
+ 
+ return 0;
+ }
+
+
+
+
+
+
+
+
+
+b)
+
+
+!/usr/local/cuda/bin/nvcc --version
+
+
+
+
+
+!nvcc --version
+
+
+
+!pip install git+https://github.com/andreinechaev/nvcc4jupyter.git
+
+
+
+
+
+# Commented out IPython magic to ensure Python compatibility.
+%load_ext nvcc_plugin
+
+
+
+# Commented out IPython magic to ensure Python compatibility.
+%%cu
+
+#/*[m,n]*[n,j]= [m,j]
+# first take transpose of vector anfd
+# then mulriply and add row wisw for each col.
+# */
+# //parallelism of multiplication only
+# //tested ok on 05/12/2018
+
+#include <cuda.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#define m 10
+__global__ void mul_r(int *a, int *b, int *c){
+# 
+int tid = threadIdx.x;
+ 			if (tid < m){
+ 						c[tid]= a[tid] * b[tid];
+ 						}
+ 
+ 		}
+ 
+ 	
+ 	
+ int main(){
+ 			int  n, c, d, fst[10][10], snd[10][10], t_snd[10][10];
+ 			int row,col,sum_c, a[10], b[10], ans[10];
+ 			
+  /*
+    printf("Enter the number of rows and columns of matrix\n");
+    scanf("%d%d", &m, &n);
+    */
+ n=m;  //square matrix only
+    //printf("Enter the elements of first matrix\n");
+    //for true randum value of vector
+ //srand(time(0));
+    for (c = 0; c < m; c++)
+    {
+    
+       for (d = 0; d < n; d++)
+ 	  {
+          //scanf("%d", &first[c][d]);
+ 		 
+ 		 fst[c][d]=rand()%10+1;
+		}
+ 	}
+ 	printf("display the elements of first matrix\n");	 
+ 	for (c = 0; c < m; c++) {
+     for (d = 0 ; d < n; d++) {
+         
+ 							printf("%d\t", fst[c][d]);
+ 								}
+ 								 printf("\n");	 
+ 							}
+      
+ 	// take next matrix
+ 	//for true randum value of vector
+  //srand(time(0));
+    for (c = 0; c < m; c++)
+    {
+    
+       for (d = 0; d < n; d++)
+ 	  {
+          //scanf("%d", &first[c][d]);
+ 		 
+ 		 snd[c][d]=rand()%10+1;
+ 		}
+ 	}
+ 	printf("display the elements of second matrix\n");	 
+ 	for (c = 0; c < m; c++) {
+       for (d = 0 ; d < n; d++) {
+         
+ 							printf("%d\t", snd[c][d]);
+ 								}
+ 								 printf("\n");	 
+ 							}
+ 	// transpose of  second matrix
+ 	for(c=0; c<m; c++)
+         for(d=0; d<n; d++)
+         {
+             t_snd[d][c] = snd[c][d];
+         }
+ 
+     // Displaying the transpose of matrix a
+     printf("\nTranspose of second Matrix:\n");
+     for (c = 0; c < n; c++) {
+       for (d = 0 ; d < m; d++) {
+         
+ 						printf("%d\t", t_snd[c][d]);
+ 					
+ 								}
+ 								 printf("\n");	 
+ 							}
+ 					
+     // now multiply on cuda
+ 	int *dev_a, *dev_b,*dev_ans;
+ 	cudaError_t err=cudaSuccess;
+ 	// allocate memory on GPU
+ 	err=cudaMalloc((void**)&dev_a,m * sizeof(int)); 
+
+  
+ 	if (err !=cudaSuccess)
+ 	{ 	printf("failed to  allocate on device \n");
+ 	printf("error is:\n",cudaGetErrorString(err));
+ 	exit(EXIT_FAILURE);
+ 	}
+ 	//printf("first  ok\n");
+ 	cudaMalloc((void**)&dev_b,m * sizeof(int)); 
+ 	cudaMalloc((void**)&dev_ans,m * sizeof(int)); 
+ 	//printf("first finished ok\n");
+ 	row=0;
+ 	col=0;
+   cudaEvent_t start, end;
+   cudaEventCreate(&start);
+   cudaEventCreate(&end);
+   cudaEventRecord(start);	  
+ 
+ 	for(row=0; row<m; row++){
+ 		
+ 	 for (d = 0 ; d < m; d++) {
+         
+ 						a[d]=fst[row][d];
+ 					
+ 								}
+ 							// printf("ok a\n");
+ 		cudaMemcpy(dev_a,a,m*sizeof(int), cudaMemcpyHostToDevice);	
+ 	for (col=0; col<m; col++){	
+ 	 for (d= 0 ; d < m; d++) {
+         
+ 						b[d]=t_snd[col][d];
+ 						ans[d]=0;
+ 					
+ 								}
+ 							// printf("ok b\n");
+ 		cudaMemcpy(dev_b,b,m*sizeof(int), cudaMemcpyHostToDevice);	
+ 		cudaMemcpy(dev_ans,ans,m*sizeof(int), cudaMemcpyHostToDevice);
+ 	//	printf("calling GPU\n");
+ 		mul_r<<<1,m>>>(dev_a,dev_b,dev_ans);
+ 		err=cudaMemcpy(ans,dev_ans,m*sizeof(int), cudaMemcpyDeviceToHost);
+ 		if (err !=cudaSuccess)
+ 			{ 	printf("failed to  copy from device \n");
+ 				exit(EXIT_FAILURE);
+ 			}
+ 	//printf("GPU returned\n");						
+ 	//a=fst[0];
+ 	sum_c=0;
+ 	 for (d = 0 ; d < m; d++) {
+         
+ 						//printf("%d\t", ans[d]);
+ 					sum_c+=ans[d];
+ 								}
+ 	snd[row][col]=sum_c;
+ 	
+ 	
+ 	
+ 	//printf("one element=%d\n",snd[row][col]);
+ 								// printf("\n");	 
+ 							
+ 	}
+ 	}
+ 	//
+ 	cudaEventRecord(end);
+   cudaEventSynchronize(end);
+   float time = 0;
+   cudaEventElapsedTime(&time, start, end);
+   printf("execution time=%f\n",time);
+ //
+ 	printf(" Matrix multipliation ans=:\n");
+     for (c = 0; c < n; c++) {
+       for (d = 0 ; d < m; d++) {
+         
+ 						printf("%d\t", snd[c][d]);
+ 					
+ 								}
+ 								 printf("\n");	 
+ 							}
+ 	//
+ 			return 0;
+ 				}
+
+

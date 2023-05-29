@@ -1,0 +1,248 @@
+a)
+!nvcc --version
+
+
+
+!pip install git+https://github.com/andreinechaev/nvcc4jupyter.git
+
+
+
+
+# Commented out IPython magic to ensure Python compatibility.
+%load_ext nvcc_plugin
+
+
+
+
+#Commented out IPython magic to ensure Python compatibility.
+%%cu
+
+#include<stdio.h>
+#include<cuda.h>
+#include<stdlib.h>
+#include<time.h>
+ 
+__global__ void min1(int* input)
+ {
+ 	const int tid = threadIdx.x;
+ 
+ 	auto step_size = 1;
+ 	int number_of_threads = blockDim.x;
+  int temp;
+ 
+ 	while (number_of_threads > 0)
+ 	{
+ 		if (tid < number_of_threads) // still alive?
+ 		{
+ 			const auto fst = tid * step_size * 2;
+ 			const auto snd = fst + step_size;
+ 			//input[fst] += input[snd];
+       if (input[fst]>input[snd])
+       {
+           temp=input[fst];
+           input[fst]=input[snd];
+           input[snd]=temp;
+       }
+ 		}
+ 		__syncthreads();
+ 		step_size <<= 1; 
+ 		number_of_threads >>= 1;
+ 	}
+ }
+ 
+ int main()
+ {
+ 	const auto count = 8;
+ 	const int size = count * sizeof(int);
+ 	int h[] = {13, 65, 15, 14, 33, 23, 30, 8};
+ 
+ 	int* d;
+ 	
+ 	cudaMalloc(&d, size);
+ 	cudaMemcpy(d, h, size, cudaMemcpyHostToDevice);
+ 
+ 	min1 <<<1, count / 2 >>>(d);
+ 
+ 	int result;
+ 	cudaMemcpy(&result, d, sizeof(int), cudaMemcpyDeviceToHost);
+  	// cout << "Large no is %d " << result << endl;
+  printf("Small no is %d  ", result);
+ 
+ 	getchar();
+ 
+ 	cudaFree(d);
+ 	//delete[] h;
+ 
+ 	return 0;
+ }
+
+
+
+
+
+
+
+
+
+
+
+c)
+
+# -*- coding: utf-8 -*-
+"""
+    https://colab.research.google.com/drive/1BiQGs69JjO16lVQqHinSSt90EqKGYxsA
+"""
+
+
+!nvcc --version
+
+!pip install git+https://github.com/andreinechaev/nvcc4jupyter.git
+
+# Commented out IPython magic to ensure Python compatibility.
+# Commented out IPython magic to ensure Python compatibility.
+# %load_ext nvcc_plugin
+
+# Commented out IPython magic to ensure Python compatibility.
+#Commented out IPython magic to ensure Python compatibility.
+#  %%cu
+ #include<stdio.h>
+ #include<cuda.h>
+ #include<stdlib.h>
+ #include<time.h>
+ 
+ __global__ void max1(int* input)
+ {
+ 	const int tid = threadIdx.x;
+ 
+ 	auto step_size = 1;
+ 	int number_of_threads = blockDim.x;
+  int temp;
+ 
+ 	while (number_of_threads > 0)
+ 	{
+ 		if (tid < number_of_threads) // still alive?
+ 		{
+ 			const auto fst = tid * step_size * 2;
+ 			const auto snd = fst + step_size;
+ 			//input[fst] += input[snd];
+       if (input[fst]<input[snd])
+       {
+           temp=input[fst];
+           input[fst]=input[snd];
+           input[snd]=temp;
+       }
+ 		}
+ 		__syncthreads();
+ 		step_size <<= 1; 
+ 		number_of_threads >>= 1;
+ 	}
+ }
+ 
+ int main()
+ {
+ 	const auto count = 8;
+ 	const int size = count * sizeof(int);
+ 	int h[] = {13, 65, 15, 14, 33, 2, 30, 8};
+ 
+ 	int* d;
+ 	
+ 	cudaMalloc(&d, size);
+ 	cudaMemcpy(d, h, size, cudaMemcpyHostToDevice);
+ 
+ 	max1 <<<1, count / 2 >>>(d);
+ 
+ 	int result;
+ 	cudaMemcpy(&result, d, sizeof(int), cudaMemcpyDeviceToHost);
+  	// cout << "Large no is %d " << result << endl;
+  printf("Large no is %d  ", result);
+ 
+ 	getchar();
+ 
+ 	cudaFree(d);
+ 	//delete[] h;
+ 
+ 	return 0;
+ }
+
+
+
+
+
+
+
+
+
+
+
+c)
+
+!nvcc –-version
+
+
+
+
+!pip install git+https://github.com/andreinechaev/nvcc4jupyter.git
+
+
+
+
+# Commented out IPython magic to ensure Python compatibility.
+%load_ext nvcc_plugin
+
+
+
+
+
+#Commented out IPython magic to ensure Python compatibility.
+ %%cu
+ #include<stdio.h>
+ #include<cuda.h>
+ #include<stdlib.h>
+ #include<time.h>
+ 
+ __global__ void sum(int* input)
+ {
+ 	const int tid = threadIdx.x;
+ 
+ 	auto step_size = 1;
+ 	int number_of_threads = blockDim.x;
+ 
+ 	while (number_of_threads > 0)
+ 	{
+ 		if (tid < number_of_threads) // still alive?
+ 		{
+ 			const auto fst = tid * step_size * 2;
+ 			const auto snd = fst + step_size;
+ 			input[fst] += input[snd];
+ 		}
+ 		__syncthreads();
+ 		step_size <<= 1; 
+ 		number_of_threads >>= 1;
+ 	}
+ }
+ 
+ int main()
+ {
+ 	const auto count = 8;
+ 	const int size = count * sizeof(int);
+ 	int h[] = {13, 27, 15, 14, 33, 2, 30, 8};
+ 
+ 	int* d;
+ 	
+ 	cudaMalloc(&d, size);
+ 	cudaMemcpy(d, h, size, cudaMemcpyHostToDevice);
+ 
+ 	sum <<<1, count / 2 >>>(d);
+ 
+ 	int result;
+ 	cudaMemcpy(&result, d, sizeof(int), cudaMemcpyDeviceToHost);
+  	// cout << "Sum is " << result << endl;
+  printf("Sum is%d  ", result); 
+	getchar();
+ 
+ 	cudaFree(d);
+ 	//delete[] h;
+ 
+ 	return 0;
+ }
+	
